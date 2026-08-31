@@ -2,35 +2,24 @@
 // Lista as fotos já enviadas, lendo direto da pasta do Google Drive.
 // Os metadados (desafio, nome, data) vêm decodificados do nome do arquivo.
 
-const { JWT } = require('google-auth-library');
+const { OAuth2Client } = require('google-auth-library');
 
-function normalizePrivateKey(raw) {
-  let key = String(raw || '').trim();
-  // Remove aspas que às vezes acabam coladas junto ao colar o valor.
-  if (key.length > 1) {
-    const first = key[0], last = key[key.length - 1];
-    if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
-      key = key.slice(1, -1).trim();
-    }
-  }
-  // Normaliza quebras de linha escapadas (\n literal, \r\n literal, \r solto).
-  key = key.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  key = key.trim();
-  if (!key.endsWith('\n')) key += '\n';
-  return key;
-}
-
+// Contas de serviço não têm cota de armazenamento própria no Drive, então
+// usamos OAuth com a conta pessoal do Google (via refresh token gerado uma
+// vez com scripts/get-refresh-token.js) — os arquivos ficam no Drive normal
+// da pessoa, dentro do espaço que ela já tem.
 function getClient() {
-  const email = (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || '').trim();
-  const key = normalizePrivateKey(process.env.GOOGLE_PRIVATE_KEY);
-  if (!email || key.indexOf('BEGIN PRIVATE KEY') === -1) {
-    throw new Error('Credenciais do Google não configuradas ou inválidas (GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_PRIVATE_KEY).');
+  const clientId = (process.env.GOOGLE_OAUTH_CLIENT_ID || '').trim();
+  const clientSecret = (process.env.GOOGLE_OAUTH_CLIENT_SECRET || '').trim();
+  const refreshToken = (process.env.GOOGLE_OAUTH_REFRESH_TOKEN || '').trim();
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error(
+      'Credenciais OAuth do Google não configuradas (GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET / GOOGLE_OAUTH_REFRESH_TOKEN).'
+    );
   }
-  return new JWT({
-    email,
-    key,
-    scopes: ['https://www.googleapis.com/auth/drive.readonly'],
-  });
+  const client = new OAuth2Client(clientId, clientSecret);
+  client.setCredentials({ refresh_token: refreshToken });
+  return client;
 }
 
 // Formato: wg__<timestamp>__ch<challengeId>__<nomeCodificado>__<idAleatorio>.<ext>
