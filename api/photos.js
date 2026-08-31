@@ -4,12 +4,27 @@
 
 const { JWT } = require('google-auth-library');
 
+function normalizePrivateKey(raw) {
+  let key = String(raw || '').trim();
+  // Remove aspas que às vezes acabam coladas junto ao colar o valor.
+  if (key.length > 1) {
+    const first = key[0], last = key[key.length - 1];
+    if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+      key = key.slice(1, -1).trim();
+    }
+  }
+  // Normaliza quebras de linha escapadas (\n literal, \r\n literal, \r solto).
+  key = key.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  key = key.trim();
+  if (!key.endsWith('\n')) key += '\n';
+  return key;
+}
+
 function getClient() {
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const rawKey = process.env.GOOGLE_PRIVATE_KEY || '';
-  const key = rawKey.replace(/\\n/g, '\n');
-  if (!email || !key) {
-    throw new Error('Credenciais do Google não configuradas (GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_PRIVATE_KEY).');
+  const email = (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || '').trim();
+  const key = normalizePrivateKey(process.env.GOOGLE_PRIVATE_KEY);
+  if (!email || key.indexOf('BEGIN PRIVATE KEY') === -1) {
+    throw new Error('Credenciais do Google não configuradas ou inválidas (GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_PRIVATE_KEY).');
   }
   return new JWT({
     email,
