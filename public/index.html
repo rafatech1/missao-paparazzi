@@ -226,6 +226,23 @@
   .seal-divider .line.right{background:linear-gradient(90deg, currentColor, transparent);}
   .seal-divider .amp{font-family:'Cormorant Garamond', Georgia, serif;font-style:italic;font-weight:600;font-size:1.6rem;flex:none;color:var(--gold);}
   .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);}
+
+  /* ---------- Identificação do convidado ---------- */
+  .guest-chip{
+    display:inline-flex;align-items:center;gap:6px;margin:0 0 26px;padding:8px 16px;
+    background:rgba(255,255,255,.55);border:1px solid rgba(184,144,31,.3);border-radius:999px;
+    font-size:.85rem;color:var(--navy-deep);
+  }
+  .guest-chip b{color:var(--navy);}
+  .link-btn{
+    background:none;border:none;padding:0;color:var(--gold-text);font-weight:600;font-size:inherit;
+    text-decoration:underline;cursor:pointer;font-family:inherit;
+  }
+  .guest-line{font-size:.85rem;color:var(--navy-deep);margin-top:2px;}
+  .guest-line b{color:var(--navy);}
+  #intro-overlay .modal{max-width:400px;}
+  .intro-eyebrow{font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-text);font-weight:700;display:block;margin-bottom:6px;}
+  .intro-note{font-size:.78rem;color:var(--muted);margin-top:10px;}
 </style>
 </head>
 <body>
@@ -262,12 +279,30 @@
 
   var META = {names:"Iana & Wllysses", date:"12 de setembro de 2026", venue:""};
   var POLL_MS = 20000;
+  var GUEST_NAME_KEY = 'wg_guest_name';
+  var GUEST_INTRO_KEY = 'wg_intro_done';
 
   var state = {submissions: [], folderUrl: null, loaded: false};
   var activeCat = 'all';
   var currentChallengeId = null;
   var currentPhotoDataUrl = null;
   var pollTimer = null;
+  var guestName = '';
+  var introReturnTo = null; // 'challenge' quando "trocar" é aberto de dentro do modal de desafio
+
+  function loadGuestName(){
+    try{ return localStorage.getItem(GUEST_NAME_KEY) || ''; }catch(e){ return ''; }
+  }
+  function saveGuestName(name){
+    guestName = (name || '').trim().slice(0,40);
+    try{
+      localStorage.setItem(GUEST_NAME_KEY, guestName);
+      localStorage.setItem(GUEST_INTRO_KEY, '1');
+    }catch(e){}
+  }
+  function hasSeenIntro(){
+    try{ return localStorage.getItem(GUEST_INTRO_KEY) === '1'; }catch(e){ return false; }
+  }
 
   function escapeHtml(s){
     return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
@@ -303,9 +338,17 @@
     '</section>';
   }
 
+  function renderGuestChip(){
+    var label = guestName
+      ? 'Participando como <b>' + escapeHtml(guestName) + '</b>'
+      : 'Participando sem nome';
+    return '<div style="text-align:center;"><span class="guest-chip">' + label +
+      ' · <button type="button" class="link-btn" id="btn-change-name">trocar</button></span></div>';
+  }
+
   function renderChallenges(){
     var html = '<section class="section"><div class="wrap">' +
-      '<div class="section-head"><h2>Os desafios</h2>' +
+      '<div class="section-head">' + renderGuestChip() + '<h2>Os desafios</h2>' +
       '<p>Pode repetir um desafio quantas vezes quiser — vale todo mundo tentar o mesmo!</p></div>' +
       '<div class="cat-tabs" id="cat-tabs">' +
         '<button type="button" class="cat-tab' + (activeCat==='all'?' is-active':'') + '" data-cat="all">Todos</button>' +
@@ -397,6 +440,20 @@
     '</div>';
   }
 
+  function renderIntroOverlay(){
+    return '' +
+    '<div class="modal-overlay" id="intro-overlay" hidden>' +
+      '<div class="modal"><div class="modal-inner">' +
+        '<span class="intro-eyebrow">Antes de começar</span>' +
+        '<h3>Quer aparecer com seu nome nas fotos?</h3>' +
+        '<label for="intro-name-input">Seu nome</label>' +
+        '<input type="text" id="intro-name-input" placeholder="Ex: Rafa (opcional)" maxlength="40">' +
+        '<div class="actions"><button type="button" class="btn-primary" id="btn-intro-continue">Ir para os desafios</button></div>' +
+        '<div class="intro-note">Pode deixar em branco se preferir não se identificar.</div>' +
+      '</div></div>' +
+    '</div>';
+  }
+
   function renderDivider(){
     return '<div class="wrap"><div class="seal-divider">' +
       '<span class="line"></span>' +
@@ -406,14 +463,19 @@
   }
 
   function renderBody(){
-    return renderHero(META) + renderChallenges() + renderDivider() + renderGallery() + renderFooter() + renderModalShell();
+    return renderHero(META) + renderChallenges() + renderDivider() + renderGallery() + renderFooter() + renderModalShell() + renderIntroOverlay();
   }
 
   function render(){
-    var wasOpen = !document.getElementById('modal-overlay') ? false : !document.getElementById('modal-overlay').hidden;
+    var modalWasOpen = !document.getElementById('modal-overlay') ? false : !document.getElementById('modal-overlay').hidden;
+    var introWasOpen = !document.getElementById('intro-overlay') ? false : !document.getElementById('intro-overlay').hidden;
+    var introTypedName = introWasOpen ? document.getElementById('intro-name-input').value : null;
     document.getElementById('root').innerHTML = renderBody();
-    if(wasOpen && currentChallengeId != null){
+    if(modalWasOpen && currentChallengeId != null){
       reopenModal();
+    }
+    if(introWasOpen){
+      openIntro(introTypedName != null ? introTypedName : guestName);
     }
   }
 
@@ -504,6 +566,28 @@
     currentPhotoDataUrl = null;
   }
 
+  function openIntro(prefill){
+    var overlay = document.getElementById('intro-overlay');
+    if(!overlay) return;
+    var input = document.getElementById('intro-name-input');
+    input.value = prefill != null ? prefill : guestName;
+    overlay.hidden = false;
+    setTimeout(function(){ input.focus(); }, 50);
+  }
+
+  function closeIntro(){
+    var overlay = document.getElementById('intro-overlay');
+    if(overlay) overlay.hidden = true;
+  }
+
+  function confirmIntro(){
+    var input = document.getElementById('intro-name-input');
+    saveGuestName(input ? input.value : '');
+    closeIntro();
+    introReturnTo = null;
+    render();
+  }
+
   function renderModalBody(){
     var mb = document.getElementById('modal-body');
     if(!currentPhotoDataUrl){
@@ -531,10 +615,10 @@
         });
       });
     } else {
+      var whoLabel = guestName ? escapeHtml(guestName) : 'Convidado(a) (sem nome)';
       mb.innerHTML =
         '<div class="preview-wrap"><img src="' + currentPhotoDataUrl + '" alt="pré-visualização"><button type="button" class="retake" id="btn-retake">Trocar foto</button></div>' +
-        '<label for="name-input">Seu nome (opcional)</label>' +
-        '<input type="text" id="name-input" placeholder="Ex: Rafa" maxlength="40">' +
+        '<div class="guest-line">Vai aparecer como <b>' + whoLabel + '</b> · <button type="button" class="link-btn" id="btn-modal-change-name">trocar</button></div>' +
         '<div class="actions">' +
         '<button type="button" class="btn-primary" id="btn-submit">Enviar pro mural</button>' +
         '</div>' +
@@ -544,6 +628,10 @@
       });
       document.getElementById('btn-submit').addEventListener('click', onSubmitPhoto);
       document.getElementById('btn-share-alt').addEventListener('click', onShareExternal);
+      document.getElementById('btn-modal-change-name').addEventListener('click', function(){
+        introReturnTo = 'challenge';
+        openIntro(guestName);
+      });
     }
   }
 
@@ -571,13 +659,12 @@
 
   function onSubmitPhoto(){
     if(!currentPhotoDataUrl) return;
-    var nameInput = document.getElementById('name-input');
     var statusEl = document.getElementById('modal-status');
     var btn = document.getElementById('btn-submit');
     btn.disabled = true;
     statusEl.textContent = 'Enviando...';
     statusEl.className = 'status-line';
-    var name = (nameInput.value || '').trim().slice(0,40);
+    var name = guestName;
     var photoDataUrl = currentPhotoDataUrl;
     var challengeId = currentChallengeId;
 
@@ -618,6 +705,8 @@
       var goBtn = e.target.closest('button.go');
       if(goBtn){ openModal(parseInt(goBtn.getAttribute('data-challenge'),10)); return; }
       if(e.target.id === 'modal-close' || e.target.id === 'modal-overlay'){ closeModal(); return; }
+      if(e.target.id === 'btn-intro-continue'){ confirmIntro(); return; }
+      if(e.target.id === 'btn-change-name'){ introReturnTo = null; openIntro(guestName); return; }
       var catTab = e.target.closest('.cat-tab');
       if(catTab){
         activeCat = catTab.getAttribute('data-cat');
@@ -625,13 +714,23 @@
         return;
       }
     });
+    document.body.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' && e.target && e.target.id === 'intro-name-input'){
+        e.preventDefault();
+        confirmIntro();
+      }
+    });
   }
 
   function init(){
+    guestName = loadGuestName();
     render();
     wireStatic();
     fetchPhotos();
     startPolling();
+    if(!hasSeenIntro()){
+      openIntro(guestName);
+    }
   }
 
   if(document.readyState === 'loading'){
