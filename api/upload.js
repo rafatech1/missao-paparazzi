@@ -1,67 +1,16 @@
 // api/upload.js
-// Recebe uma foto (base64) e salva no Google Drive, dentro da pasta configurada.
-// Não usa banco de dados: os metadados (desafio, nome, data) ficam codificados
-// no próprio nome do arquivo salvo no Drive.
+// Recebe uma foto (base64) e salva no Vercel Blob Storage — nada de Google
+// Cloud, OAuth ou service account. O token de acesso (BLOB_READ_WRITE_TOKEN)
+// é injetado automaticamente pela Vercel quando o projeto tem um Blob Store
+// conectado (Storage → Create Database → Blob no painel da Vercel).
 
-const { OAuth2Client } = require('google-auth-library');
-
-// Contas de serviço não têm cota de armazenamento própria no Drive, então
-// usamos OAuth com a conta pessoal do Google (via refresh token gerado uma
-// vez com scripts/get-refresh-token.js) — os arquivos ficam no Drive normal
-// da pessoa, dentro do espaço que ela já tem.
-function getClient() {
-  const clientId = (process.env.GOOGLE_OAUTH_CLIENT_ID || '').trim();
-  const clientSecret = (process.env.GOOGLE_OAUTH_CLIENT_SECRET || '').trim();
-  const refreshToken = (process.env.GOOGLE_OAUTH_REFRESH_TOKEN || '').trim();
-  if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error(
-      'Credenciais OAuth do Google não configuradas (GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET / GOOGLE_OAUTH_REFRESH_TOKEN).'
-    );
-  }
-  const client = new OAuth2Client(clientId, clientSecret);
-  client.setCredentials({ refresh_token: refreshToken });
-  return client;
-}
+const { put } = require('@vercel/blob');
 
 function sanitizeName(name) {
   return String(name || '')
     .trim()
     .slice(0, 40)
     .replace(/[\r\n]/g, ' ');
-}
-
-async function uploadToDrive(client, { filename, mimeType, base64Data, folderId }) {
-  const boundary = 'wgboundary' + Date.now() + Math.random().toString(36).slice(2);
-  const delimiter = `\r\n--${boundary}\r\n`;
-  const closeDelim = `\r\n--${boundary}--`;
-
-  const metadata = { name: filename, parents: [folderId] };
-
-  const multipartBody =
-    delimiter +
-    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
-    JSON.stringify(metadata) +
-    delimiter +
-    `Content-Type: ${mimeType}\r\n` +
-    'Content-Transfer-Encoding: base64\r\n\r\n' +
-    base64Data +
-    closeDelim;
-
-  const res = await client.request({
-    url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name',
-    method: 'POST',
-    headers: { 'Content-Type': `multipart/related; boundary="${boundary}"` },
-    data: multipartBody,
-  });
-  return res.data;
-}
-
-async function makePublic(client, fileId) {
-  await client.request({
-    url: `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
-    method: 'POST',
-    data: { role: 'reader', type: 'anyone' },
-  });
 }
 
 module.exports = async (req, res) => {
@@ -78,9 +27,6 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-    if (!folderId) throw new Error('GOOGLE_DRIVE_FOLDER_ID não configurada.');
-
     const body = req.body || {};
     const { challengeId, name, photo } = body;
 
@@ -110,19 +56,25 @@ module.exports = async (req, res) => {
       return;
     }
 
+    const buffer = Buffer.from(base64Data, 'base64');
     const cleanName = sanitizeName(name);
     const ts = Date.now();
     const rid = Math.random().toString(36).slice(2, 8);
+    // Metadados (desafio, nome, data) codificados no próprio nome do arquivo —
+    // não precisa de banco de dados pra guardar isso separadamente.
     const filename =
       'wg__' + ts + '__ch' + chId + '__' + encodeURIComponent(cleanName || 'convidado') + '__' + rid + '.' + ext;
 
-    const client = getClient();
-    const uploaded = await uploadToDrive(client, { filename, mimeType, base64Data, folderId });
-    await makePublic(client, uploaded.id);
+    const blob = await put(filename, buffer, {
+      access: 'public',
+      contentType: mimeType,
+      addRandomSuffix: false,
+    });
 
     res.status(200).json({
       ok: true,
-      id: uploaded.id,
+      id: blob.pathname,
+      url: blob.url,
       challengeId: chId,
       name: cleanName,
       ts,

@@ -2,11 +2,11 @@
   "name": "caca-cliques-casamento",
   "version": "1.0.0",
   "private": true,
-  "description": "Jogo de desafios fotograficos do casamento - fotos guardadas no Google Drive, hospedado no Vercel",
+  "description": "Jogo de desafios fotograficos do casamento - fotos guardadas no Vercel Blob, hospedado no Vercel",
   "scripts": {
     "dev": "vercel dev"
   },
   "dependencies": {
-    "google-auth-library": "^9.14.1"
+    "@vercel/blob": "^2.8.0"
   }
 }

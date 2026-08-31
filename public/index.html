@@ -282,7 +282,7 @@
   var GUEST_NAME_KEY = 'wg_guest_name';
   var GUEST_INTRO_KEY = 'wg_intro_done';
 
-  var state = {submissions: [], folderUrl: null, loaded: false};
+  var state = {submissions: [], loaded: false};
   var activeCat = 'all';
   var currentChallengeId = null;
   var currentPhotoDataUrl = null;
@@ -422,7 +422,6 @@
     return '<footer><div class="wrap">' +
       '<div class="stats">' + n + (n===1 ? ' foto no mural' : ' fotos no mural') + '</div>' +
       renderLeaderboard() +
-      (state.folderUrl ? '<a class="btn-ghost" href="' + state.folderUrl + '" target="_blank" rel="noopener">Ver álbum completo no Google Drive</a>' : '') +
       '<div class="status-line" id="footer-status"></div>' +
     '</div></footer>';
   }
@@ -490,7 +489,6 @@
         return p;
       });
       state.submissions = merged;
-      state.folderUrl = data.folderUrl;
       state.loaded = true;
       render();
     }).catch(function(){ /* silencioso, tenta de novo no próximo poll */ });
@@ -683,7 +681,7 @@
           name: res.data.name,
           ts: res.data.ts,
           localPreviewUrl: photoDataUrl,
-          url: 'https://drive.google.com/thumbnail?id=' + res.data.id + '&sz=w800'
+          url: res.data.url
         });
         render();
         var statusEl2 = document.getElementById('modal-status');
