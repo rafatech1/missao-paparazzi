@@ -173,6 +173,13 @@
   .status-line{margin-top:14px;font-size:.8rem;min-height:1.2em;}
   .status-line.err{color:var(--rose);}
   .status-line.ok{color:var(--leaf);}
+  .thanks{
+    margin-top:30px;padding-top:24px;border-top:1px solid var(--line);
+    font-family:'Cormorant Garamond', Georgia, serif;font-style:italic;font-size:1.15rem;
+    color:var(--navy);max-width:440px;margin-left:auto;margin-right:auto;
+  }
+  .credit{margin-top:16px;font-size:.72rem;color:var(--muted);}
+  .credit a{color:var(--muted);text-decoration:underline;}
 
   /* ---------- Modal ---------- */
   .modal-overlay{
@@ -423,6 +430,8 @@
       '<div class="stats">' + n + (n===1 ? ' foto no mural' : ' fotos no mural') + '</div>' +
       renderLeaderboard() +
       '<div class="status-line" id="footer-status"></div>' +
+      '<p class="thanks">Obrigado por fazer parte do nosso grande dia — cada foto e cada desafio topado deixam essa festa ainda mais especial. Com carinho, Iana &amp; Wllysses.</p>' +
+      '<div class="credit">Desenvolvido por RafaTech · <a href="mailto:jr.araujo.ti@gmail.com">jr.araujo.ti@gmail.com</a></div>' +
     '</div></footer>';
   }
 
