@@ -1,4 +1,9 @@
 // api/upload.js
+// Recebe uma foto (base64) e salva no Vercel Blob Storage — nada de Google
+// Cloud, OAuth ou service account. O token de acesso (BLOB_READ_WRITE_TOKEN)
+// é injetado automaticamente pela Vercel quando o projeto tem um Blob Store
+// conectado (Storage → Create Database → Blob no painel da Vercel).
+
 const { put } = require('@vercel/blob');
 
 function sanitizeName(name) {

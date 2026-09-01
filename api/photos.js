@@ -1,4 +1,6 @@
 // api/photos.js
+// Lista as fotos já enviadas, lendo direto do Vercel Blob Storage.
+// Os metadados (desafio, nome, data) vêm decodificados do nome do arquivo.
 
 const { list } = require('@vercel/blob');
 
