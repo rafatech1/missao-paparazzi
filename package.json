@@ -1,0 +1,12 @@
+{
+  "name": "caca-cliques-casamento",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Jogo de desafios fotograficos do casamento - fotos guardadas no Vercel Blob, hospedado no Vercel",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.0"
+  }
+}
