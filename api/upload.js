@@ -5,6 +5,7 @@
 // conectado (Storage → Create Database → Blob no painel da Vercel).
 
 const { put } = require('@vercel/blob');
+const { CHALLENGE_COUNT, MAX_PER_CHALLENGE, countForChallenge } = require('./_lib/media');
 
 function sanitizeName(name) {
   return String(name || '')
@@ -36,8 +37,14 @@ module.exports = async (req, res) => {
     }
 
     const chId = parseInt(challengeId, 10);
-    if (isNaN(chId) || chId < 0 || chId > 19) {
+    if (isNaN(chId) || chId < 0 || chId >= CHALLENGE_COUNT) {
       res.status(400).json({ error: 'desafio_invalido' });
+      return;
+    }
+
+    const jaEnviados = await countForChallenge(chId);
+    if (jaEnviados >= MAX_PER_CHALLENGE) {
+      res.status(409).json({ error: 'desafio_completo' });
       return;
     }
 

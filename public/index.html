@@ -103,7 +103,6 @@
     font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700;
     color:var(--gold-text);margin-top:-6px;
   }
-  .ticket[hidden]{display:none;}
   .ticket{
     position:relative;background:var(--card);color:var(--ink);border-radius:10px;
     padding:20px 20px 18px;box-shadow:0 8px 20px rgba(30,58,120,.10);border:1px solid rgba(184,144,31,.22);
@@ -132,6 +131,19 @@
     letter-spacing:.01em;
   }
   .ticket button.go:active{transform:scale(.98);}
+  .ticket button.go:disabled{background:var(--muted);cursor:default;}
+  .ticket.is-full{opacity:.6;}
+  .ticket.is-full .count{color:var(--rose);}
+
+  /* ---------- Paginação (aba Outros) ---------- */
+  .pagination{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:22px;}
+  .page-btn{
+    border:1px solid rgba(30,58,120,.28);background:rgba(255,255,255,.6);color:var(--navy);
+    width:40px;height:40px;border-radius:50%;font-size:1.1rem;display:flex;align-items:center;justify-content:center;
+    flex:none;
+  }
+  .page-btn:disabled{opacity:.35;cursor:default;}
+  .page-info{font-size:.85rem;color:var(--muted);font-weight:600;}
 
   /* ---------- Gallery ---------- */
   .gallery-empty{
@@ -275,37 +287,48 @@
   var CATEGORIES = ["Essenciais", "Divertidos", "Momentos lindos", "Ousados"];
 
   var CHALLENGES = [
-    {cat:0, text:"As alianças brilhando na luz"},
     {cat:0, text:"O primeiro brinde dos noivos"},
     {cat:0, text:"A primeira dança do casal"},
     {cat:0, text:"O corte do bolo"},
     {cat:0, text:"O buquê sendo jogado (ou tentando pegar ele)"},
+    {cat:0, text:"Registre sua presença"},
     {cat:1, text:"Uma selfie com quem você acabou de conhecer na festa"},
     {cat:1, text:"Você imitando o passo de dança de outro convidado"},
     {cat:1, text:"Um photobomb discreto em outra foto de alguém"},
     {cat:1, text:"A cara de quem está adorando o buffet"},
     {cat:1, text:"Recriando uma pose clássica de casamento, só que exagerada"},
+    {cat:1, text:"Uma foto de alguém que vai amanhecer de ressaca"},
+    {cat:1, text:"Rei e rainha da pista de dança"},
     {cat:2, text:"Uma lágrima de emoção de algum convidado"},
     {cat:2, text:"Três gerações numa foto só — avós, pais e crianças"},
     {cat:2, text:"Um abraço apertado entre os noivos e os pais"},
     {cat:2, text:"Um detalhe da decoração que você achou lindo"},
     {cat:2, text:"O olhar de alguém vendo os noivos passarem"},
+    {cat:2, text:"Foto de entrada (recepção da chegada dos noivos no ambiente da festa)"},
+    {cat:2, text:"Fotos entre madrinhas"},
+    {cat:2, text:"Foto entre padrinhos"},
+    {cat:2, text:"Foto com os noivos"},
     {cat:3, text:"Uma foto em grupo gritando \"vivam os noivos!\""},
     {cat:3, text:"O melhor movimento da pista de dança até agora"},
     {cat:3, text:"Um acessório emprestado virando parte do seu look"},
     {cat:3, text:"Uma pose de capa de revista com os padrinhos/madrinhas"},
-    {cat:3, text:"Uma foto tentando roubar a cena dos noivos (com carinho)"}
+    {cat:3, text:"Uma foto tentando roubar a cena dos noivos (com carinho)"},
+    {cat:3, text:"Foto com Ravi"}
   ];
 
   var META = {names:"Iana & Wllysses", date:"12 de setembro de 2026", venue:""};
   var POLL_MS = 20000;
   var GUEST_NAME_KEY = 'wg_guest_name';
   var GUEST_INTRO_KEY = 'wg_intro_done';
-  var MAX_VIDEO_SECONDS = 30;
+  var MAX_VIDEO_SECONDS = 15;
   var MAX_VIDEO_BYTES = 150 * 1024 * 1024;
+  var MAX_PER_CHALLENGE = 3; // depois disso o desafio fica "completo"
+
+  var CHALLENGES_PAGE_SIZE = 5;
 
   var state = {submissions: [], loaded: false};
-  var activeCat = 'all';
+  var activeCat = '0'; // "Essenciais" é a aba principal, aberta por padrão
+  var currentPage = 0; // só usado na aba "Outros" (todos os desafios juntos)
   var currentChallengeId = null;
   // currentMedia: {type:'image', dataUrl} ou {type:'video', file, previewUrl, ext}
   var currentMedia = null;
@@ -339,6 +362,10 @@
     return n;
   }
 
+  function isChallengeFull(challengeId){
+    return countFor(challengeId) >= MAX_PER_CHALLENGE;
+  }
+
   function renderHero(meta){
     return '' +
     '<section class="hero">' +
@@ -369,28 +396,65 @@
       ' · <button type="button" class="link-btn" id="btn-change-name">trocar</button></span></div>';
   }
 
+  // Lista de índices de CHALLENGES que pertencem à aba ativa. "all" (Outros)
+  // junta as 4 categorias (27 desafios); as outras abas mostram só a sua
+  // própria categoria, sem precisar paginar.
+  function getFilteredChallengeIndexes(){
+    if(activeCat === 'all'){
+      return CHALLENGES.map(function(_, i){ return i; });
+    }
+    var out = [];
+    for(var i=0;i<CHALLENGES.length;i++){
+      if(String(CHALLENGES[i].cat) === activeCat) out.push(i);
+    }
+    return out;
+  }
+
   function renderChallenges(){
+    var isPaginated = activeCat === 'all';
+    var indexes = getFilteredChallengeIndexes();
+    var totalPages = Math.max(1, Math.ceil(indexes.length / CHALLENGES_PAGE_SIZE));
+    if(currentPage >= totalPages) currentPage = totalPages - 1;
+    if(currentPage < 0) currentPage = 0;
+    var pageIndexes = isPaginated
+      ? indexes.slice(currentPage*CHALLENGES_PAGE_SIZE, currentPage*CHALLENGES_PAGE_SIZE + CHALLENGES_PAGE_SIZE)
+      : indexes;
+
     var html = '<section class="section"><div class="wrap">' +
       '<div class="section-head">' + renderGuestChip() + '<h2>Os desafios</h2>' +
-      '<p>Pode repetir um desafio quantas vezes quiser — vale todo mundo tentar o mesmo!</p></div>' +
+      '<p>Cada desafio aceita até ' + MAX_PER_CHALLENGE + ' fotos ou vídeos — depois disso ele fica completo e é hora de topar outro!</p></div>' +
       '<div class="cat-tabs" id="cat-tabs">' +
-        '<button type="button" class="cat-tab' + (activeCat==='all'?' is-active':'') + '" data-cat="all">Todos</button>' +
         CATEGORIES.map(function(c,ci){ return '<button type="button" class="cat-tab' + (activeCat===String(ci)?' is-active':'') + '" data-cat="'+ci+'">'+escapeHtml(c)+'</button>'; }).join('') +
+        '<button type="button" class="cat-tab' + (activeCat==='all'?' is-active':'') + '" data-cat="all">Outros</button>' +
       '</div>' +
       '<div class="challenge-grid" id="challenge-grid">';
-    for(var i=0;i<CHALLENGES.length;i++){
-      var n = countFor(i);
+    for(var k=0;k<pageIndexes.length;k++){
+      var i = pageIndexes[k];
       var ch = CHALLENGES[i];
-      var hidden = (activeCat !== 'all' && String(ch.cat) !== activeCat);
-      html += '<div class="ticket" data-cat="' + ch.cat + '"' + (hidden ? ' hidden' : '') + '>' +
+      var n = countFor(i);
+      var full = n >= MAX_PER_CHALLENGE;
+      var countText = full
+        ? (MAX_PER_CHALLENGE + '/' + MAX_PER_CHALLENGE + ' · completo')
+        : (n + '/' + MAX_PER_CHALLENGE + (n===1?' foto enviada':' fotos enviadas'));
+      html += '<div class="ticket' + (full?' is-full':'') + '" data-cat="' + ch.cat + '">' +
         '<span class="num">' + String(i+1).padStart(2,'0') + '</span>' +
         '<div class="cat-label">' + escapeHtml(CATEGORIES[ch.cat]) + '</div>' +
         '<div class="txt">' + escapeHtml(ch.text) + '</div>' +
-        '<div class="meta-row"><span class="count">' + n + (n===1?' foto enviada':' fotos enviadas') + '</span></div>' +
-        '<button type="button" class="go" data-challenge="' + i + '">Tirar / enviar foto ou vídeo</button>' +
+        '<div class="meta-row"><span class="count">' + countText + '</span></div>' +
+        (full
+          ? '<button type="button" class="go" disabled>Desafio completo ✓</button>'
+          : '<button type="button" class="go" data-challenge="' + i + '">Tirar / enviar foto ou vídeo</button>') +
       '</div>';
     }
-    html += '</div></div></section>';
+    html += '</div>';
+    if(isPaginated && totalPages > 1){
+      html += '<div class="pagination" id="pagination">' +
+        '<button type="button" class="page-btn" id="page-prev"' + (currentPage===0?' disabled':'') + ' aria-label="Página anterior">&larr;</button>' +
+        '<span class="page-info">Página ' + (currentPage+1) + ' de ' + totalPages + '</span>' +
+        '<button type="button" class="page-btn" id="page-next"' + (currentPage===totalPages-1?' disabled':'') + ' aria-label="Próxima página">&rarr;</button>' +
+      '</div>';
+    }
+    html += '</div></section>';
     return html;
   }
 
@@ -688,12 +752,17 @@
 
   function renderModalBody(){
     var mb = document.getElementById('modal-body');
+    if(!currentMedia && isChallengeFull(currentChallengeId)){
+      mb.innerHTML = '<div class="gallery-empty">Esse desafio já recebeu ' + MAX_PER_CHALLENGE +
+        ' fotos/vídeos e não está mais aceitando envios. Fecha e escolhe outro desafio! 😉</div>';
+      return;
+    }
     if(!currentMedia){
       mb.innerHTML =
         '<label for="photo-input">Sua foto ou vídeo</label>' +
         '<label class="file-pick" for="photo-input">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:26px;height:26px;flex:none;"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7H8l1-1.5h6L16 7h2.5A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9Z"/><circle cx="12" cy="13" r="3.2"/></svg>' +
-        '<span>Toque para tirar uma foto ou gravar um vídeo (até 30s)</span>' +
+        '<span>Toque para tirar uma foto ou gravar um vídeo (até 15s)</span>' +
         '<input class="visually-hidden" type="file" id="photo-input" accept="image/*,video/*" capture="environment">' +
         '</label>';
       var input = document.getElementById('photo-input');
@@ -716,7 +785,7 @@
             renderModalBody();
           }).catch(function(err){
             if(err && err.code === 'video_longo_demais'){
-              statusEl.textContent = 'Esse vídeo passa de 30 segundos. Grava um pedacinho mais curto e tenta de novo!';
+              statusEl.textContent = 'Esse vídeo passa de 15 segundos. Grava um pedacinho mais curto e tenta de novo!';
             } else {
               statusEl.textContent = 'Não consegui ler esse vídeo, tenta outro.';
             }
@@ -792,6 +861,12 @@
   function onSubmitMedia(){
     if(!currentMedia) return;
     var statusEl = document.getElementById('modal-status');
+    if(isChallengeFull(currentChallengeId)){
+      statusEl.textContent = 'Esse desafio já bateu o limite de ' + MAX_PER_CHALLENGE + ' fotos/vídeos — escolhe outro desafio!';
+      statusEl.className = 'status-line err';
+      renderModalBody();
+      return;
+    }
     var btn = document.getElementById('btn-submit');
     btn.disabled = true;
     statusEl.textContent = 'Enviando...';
@@ -824,7 +899,9 @@
       }).then(function(r){ return r.json().then(function(data){ return {ok: r.ok, data: data}; }); })
         .then(function(res){
           if(!res.ok || !res.data || !res.data.ok){
-            throw new Error((res.data && res.data.error) || 'erro');
+            var err = new Error((res.data && res.data.error) || 'erro');
+            err.code = res.data && res.data.error;
+            throw err;
           }
           onOk({
             id: res.data.id,
@@ -835,7 +912,14 @@
             localPreviewUrl: media.dataUrl,
             url: res.data.url
           });
-        }).catch(function(){ onFail(); });
+        }).catch(function(err){
+          if(err && err.code === 'desafio_completo'){
+            fetchPhotos();
+            onFail('Esse desafio já bateu o limite de ' + MAX_PER_CHALLENGE + ' fotos/vídeos — escolhe outro desafio!');
+          } else {
+            onFail();
+          }
+        });
     } else {
       statusEl.textContent = 'Enviando vídeo... isso pode levar um instante.';
       getBlobUpload().then(function(upload){
@@ -860,7 +944,12 @@
         if(code === 'blob_client_timeout' || code === 'blob_client_load_failed'){
           onFail('Não consegui carregar o suporte a vídeo. Confere sua internet e tenta de novo.');
         } else {
-          onFail('Não deu pra enviar o vídeo agora. Confere sua internet e tenta de novo.');
+          // O servidor pode ter recusado por vídeo inválido, desafio já
+          // completo (alguém mandou enquanto você gravava) ou falha de rede —
+          // a lib do Blob não distingue esses casos aqui, então atualiza o
+          // mural pra já refletir o que estiver valendo.
+          fetchPhotos();
+          onFail('Não deu pra enviar o vídeo agora — pode ser que esse desafio tenha acabado de completar ' + MAX_PER_CHALLENGE + ' envios, ou sua internet caiu. Confere e tenta de novo.');
         }
       });
     }
@@ -877,6 +966,17 @@
       var catTab = e.target.closest('.cat-tab');
       if(catTab){
         activeCat = catTab.getAttribute('data-cat');
+        currentPage = 0;
+        render();
+        return;
+      }
+      if(e.target.id === 'page-prev'){
+        currentPage = Math.max(0, currentPage - 1);
+        render();
+        return;
+      }
+      if(e.target.id === 'page-next'){
+        currentPage = currentPage + 1;
         render();
         return;
       }
