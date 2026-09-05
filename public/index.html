@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Missão Paparazzi — Iana & Wllysses</title>
+<title>Missão Paparazzi · Iana & Wllysses</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" type="image/png" href="favicon-32.png" sizes="32x32">
@@ -299,7 +299,7 @@
     {cat:1, text:"Uma foto de alguém que vai amanhecer de ressaca"},
     {cat:1, text:"Rei e rainha da pista de dança"},
     {cat:2, text:"Uma lágrima de emoção de algum convidado"},
-    {cat:2, text:"Três gerações numa foto só — avós, pais e crianças"},
+    {cat:2, text:"Três gerações numa foto só: avós, pais e crianças"},
     {cat:2, text:"Um abraço apertado entre os noivos e os pais"},
     {cat:2, text:"Um detalhe da decoração que você achou lindo"},
     {cat:2, text:"A entrada dos noivos na festa"},
@@ -420,7 +420,7 @@
 
     var html = '<section class="section"><div class="wrap">' +
       '<div class="section-head">' + renderGuestChip() + '<h2>Os desafios</h2>' +
-      '<p>Cada desafio aceita até ' + MAX_PER_CHALLENGE + ' fotos ou vídeos — depois disso ele fica completo e é hora de topar outro!</p></div>' +
+      '<p>Cada desafio aceita até ' + MAX_PER_CHALLENGE + ' fotos ou vídeos. Depois disso ele fica completo e é hora de topar outro!</p></div>' +
       '<div class="cat-tabs" id="cat-tabs">' +
         CATEGORIES.map(function(c,ci){ return '<button type="button" class="cat-tab' + (activeCat===String(ci)?' is-active':'') + '" data-cat="'+ci+'">'+escapeHtml(c)+'</button>'; }).join('') +
         '<button type="button" class="cat-tab' + (activeCat==='all'?' is-active':'') + '" data-cat="all">Todos</button>' +
@@ -511,7 +511,7 @@
       '<div class="stats">' + n + (n===1 ? ' foto no mural' : ' fotos no mural') + '</div>' +
       renderLeaderboard() +
       '<div class="status-line" id="footer-status"></div>' +
-      '<p class="thanks">Obrigado por fazer parte do nosso grande dia — cada foto e cada desafio topado deixam essa festa ainda mais especial. Com carinho, Iana &amp; Wllysses.</p>' +
+      '<p class="thanks">Obrigado por fazer parte do nosso grande dia. Cada foto e cada desafio topado deixam essa festa ainda mais especial. Com carinho, Iana &amp; Wllysses.</p>' +
       '<div class="credit">Desenvolvido por RafaTech · <a href="mailto:jr.araujo.ti@gmail.com">jr.araujo.ti@gmail.com</a></div>' +
     '</div></footer>';
   }
@@ -851,7 +851,7 @@
       navigator.share({files:[file], title:'Desafio do casamento', text: CHALLENGES[currentChallengeId].text}).catch(function(){});
     } else {
       var statusEl = document.getElementById('modal-status');
-      statusEl.textContent = 'Seu navegador não abre o menu de compartilhar aqui — segura na imagem pra salvar e manda pelo WhatsApp!';
+      statusEl.textContent = 'Seu navegador não abre o menu de compartilhar aqui, segura na imagem pra salvar e manda pelo WhatsApp!';
       statusEl.className = 'status-line';
     }
   }
@@ -860,7 +860,7 @@
     if(!currentMedia) return;
     var statusEl = document.getElementById('modal-status');
     if(isChallengeFull(currentChallengeId)){
-      statusEl.textContent = 'Esse desafio já bateu o limite de ' + MAX_PER_CHALLENGE + ' fotos/vídeos — escolhe outro desafio!';
+      statusEl.textContent = 'Esse desafio já bateu o limite de ' + MAX_PER_CHALLENGE + ' fotos/vídeos, escolhe outro desafio!';
       statusEl.className = 'status-line err';
       renderModalBody();
       return;
@@ -913,7 +913,7 @@
         }).catch(function(err){
           if(err && err.code === 'desafio_completo'){
             fetchPhotos();
-            onFail('Esse desafio já bateu o limite de ' + MAX_PER_CHALLENGE + ' fotos/vídeos — escolhe outro desafio!');
+            onFail('Esse desafio já bateu o limite de ' + MAX_PER_CHALLENGE + ' fotos/vídeos, escolhe outro desafio!');
           } else {
             onFail();
           }
@@ -947,7 +947,7 @@
           // a lib do Blob não distingue esses casos aqui, então atualiza o
           // mural pra já refletir o que estiver valendo.
           fetchPhotos();
-          onFail('Não deu pra enviar o vídeo agora — pode ser que esse desafio tenha acabado de completar ' + MAX_PER_CHALLENGE + ' envios, ou sua internet caiu. Confere e tenta de novo.');
+          onFail('Não deu pra enviar o vídeo agora. Pode ser que esse desafio tenha acabado de completar ' + MAX_PER_CHALLENGE + ' envios, ou sua internet caiu. Confere e tenta de novo.');
         }
       });
     }
