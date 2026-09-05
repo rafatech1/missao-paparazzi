@@ -425,7 +425,7 @@
       '<p>Cada desafio aceita até ' + MAX_PER_CHALLENGE + ' fotos ou vídeos — depois disso ele fica completo e é hora de topar outro!</p></div>' +
       '<div class="cat-tabs" id="cat-tabs">' +
         CATEGORIES.map(function(c,ci){ return '<button type="button" class="cat-tab' + (activeCat===String(ci)?' is-active':'') + '" data-cat="'+ci+'">'+escapeHtml(c)+'</button>'; }).join('') +
-        '<button type="button" class="cat-tab' + (activeCat==='all'?' is-active':'') + '" data-cat="all">Outros</button>' +
+        '<button type="button" class="cat-tab' + (activeCat==='all'?' is-active':'') + '" data-cat="all">Todos</button>' +
       '</div>' +
       '<div class="challenge-grid" id="challenge-grid">';
     for(var k=0;k<pageIndexes.length;k++){
