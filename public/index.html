@@ -152,6 +152,7 @@
   .gallery .photo-card:nth-child(4n+3){--r:-0.35deg;}
   .gallery .photo-card:nth-child(4n){--r:1.1deg;}
   .photo-card img{border-radius:2px;width:100%;object-fit:cover;background:#e7e2d422;aspect-ratio:4/5;}
+  .photo-card video{border-radius:2px;width:100%;object-fit:cover;background:#000;aspect-ratio:4/5;}
   .photo-card .cap{
     color:var(--ink);margin-top:8px;font-size:.78rem;display:flex;justify-content:space-between;
     gap:8px;align-items:baseline;
@@ -208,6 +209,7 @@
   }
   .preview-wrap{position:relative;}
   .preview-wrap img{border-radius:10px;width:100%;max-height:320px;object-fit:cover;}
+  .preview-wrap video{border-radius:10px;width:100%;max-height:320px;object-fit:cover;background:#000;}
   .preview-wrap button.retake{
     position:absolute;top:8px;right:8px;background:rgba(21,42,88,.7);color:#fff;
     border:none;border-radius:20px;padding:6px 12px;font-size:.75rem;
@@ -255,6 +257,17 @@
 <body>
 <div id="root"></div>
 
+<script type="module">
+  // Carrega só a função de "upload direto pro Blob" que o vídeo precisa —
+  // isso deixa o navegador mandar o arquivo direto pro Vercel Blob Storage,
+  // sem passar pelo limite de tamanho das funções serverless.
+  try {
+    var mod = await import('https://esm.sh/@vercel/blob@2.8.0/client');
+    window.__blobUpload = mod.upload;
+  } catch (e) {
+    window.__blobUploadError = true;
+  }
+</script>
 <script>
 (function(){
   "use strict";
@@ -288,11 +301,14 @@
   var POLL_MS = 20000;
   var GUEST_NAME_KEY = 'wg_guest_name';
   var GUEST_INTRO_KEY = 'wg_intro_done';
+  var MAX_VIDEO_SECONDS = 30;
+  var MAX_VIDEO_BYTES = 150 * 1024 * 1024;
 
   var state = {submissions: [], loaded: false};
   var activeCat = 'all';
   var currentChallengeId = null;
-  var currentPhotoDataUrl = null;
+  // currentMedia: {type:'image', dataUrl} ou {type:'video', file, previewUrl, ext}
+  var currentMedia = null;
   var pollTimer = null;
   var guestName = '';
   var introReturnTo = null; // 'challenge' quando "trocar" é aberto de dentro do modal de desafio
@@ -371,7 +387,7 @@
         '<div class="cat-label">' + escapeHtml(CATEGORIES[ch.cat]) + '</div>' +
         '<div class="txt">' + escapeHtml(ch.text) + '</div>' +
         '<div class="meta-row"><span class="count">' + n + (n===1?' foto enviada':' fotos enviadas') + '</span></div>' +
-        '<button type="button" class="go" data-challenge="' + i + '">Tirar / enviar foto</button>' +
+        '<button type="button" class="go" data-challenge="' + i + '">Tirar / enviar foto ou vídeo</button>' +
       '</div>';
     }
     html += '</div></div></section>';
@@ -395,8 +411,11 @@
         var s = subs[i];
         var label = (s.challengeId != null && CHALLENGES[s.challengeId] != null) ? ('#' + (s.challengeId+1)) : '';
         var src = s.localPreviewUrl || s.url;
+        var mediaTag = s.type === 'video'
+          ? '<video src="' + src + '" muted playsinline preload="metadata" controls></video>'
+          : '<img src="' + src + '" alt="' + escapeHtml((CHALLENGES[s.challengeId] && CHALLENGES[s.challengeId].text) || 'foto do mural') + '" loading="lazy">';
         body += '<figure class="photo-card">' +
-          '<img src="' + src + '" alt="' + escapeHtml((CHALLENGES[s.challengeId] && CHALLENGES[s.challengeId].text) || 'foto do mural') + '" loading="lazy">' +
+          mediaTag +
           '<div class="cap"><span class="who">' + escapeHtml(s.name || 'Convidado(a)') + '</span>' +
           '<span class="tag">' + label + '</span></div>' +
         '</figure>';
@@ -550,10 +569,82 @@
     });
   }
 
+  /* ---------- video handling ---------- */
+  function sanitizeNameClient(name){
+    return String(name || '').trim().slice(0, 40).replace(/[\r\n]/g, ' ');
+  }
+
+  function guessVideoExt(mime){
+    if(!mime) return 'mp4';
+    if(mime.indexOf('quicktime') !== -1) return 'mov';
+    if(mime.indexOf('webm') !== -1) return 'webm';
+    if(mime.indexOf('3gpp') !== -1) return '3gp';
+    if(mime.indexOf('x-m4v') !== -1) return 'm4v';
+    return 'mp4';
+  }
+
+  // Lê a duração do vídeo no próprio navegador antes de mandar pro servidor,
+  // pra barrar vídeo comprido sem gastar dados do convidado.
+  function prepareVideo(file){
+    return new Promise(function(resolve, reject){
+      var url = URL.createObjectURL(file);
+      var v = document.createElement('video');
+      v.preload = 'metadata';
+      v.onloadedmetadata = function(){
+        var d = v.duration;
+        if(!isFinite(d) || d <= 0){
+          URL.revokeObjectURL(url);
+          reject({code: 'duracao_desconhecida'});
+          return;
+        }
+        if(d > MAX_VIDEO_SECONDS + 0.5){
+          URL.revokeObjectURL(url);
+          reject({code: 'video_longo_demais', duration: d});
+          return;
+        }
+        resolve({previewUrl: url, duration: d});
+      };
+      v.onerror = function(){
+        URL.revokeObjectURL(url);
+        reject({code: 'video_invalido'});
+      };
+      v.src = url;
+    });
+  }
+
+  // Mesma convenção de nome usada pelas fotos (api/upload.js), só que
+  // montada aqui porque o vídeo vai direto do navegador pro Blob Storage.
+  function buildVideoPathname(challengeId, name, ext){
+    var ts = Date.now();
+    var rid = Math.random().toString(36).slice(2, 8);
+    var cleanName = sanitizeNameClient(name);
+    return {
+      pathname: 'wg__' + ts + '__ch' + challengeId + '__' + encodeURIComponent(cleanName || 'convidado') + '__' + rid + '.' + ext,
+      ts: ts,
+      cleanName: cleanName,
+    };
+  }
+
+  // Espera o módulo do Vercel Blob (carregado via <script type="module"> no
+  // topo da página) terminar de carregar antes de tentar enviar um vídeo.
+  function getBlobUpload(){
+    return new Promise(function(resolve, reject){
+      if(window.__blobUpload){ resolve(window.__blobUpload); return; }
+      if(window.__blobUploadError){ reject(new Error('blob_client_load_failed')); return; }
+      var tries = 0;
+      var iv = setInterval(function(){
+        tries++;
+        if(window.__blobUpload){ clearInterval(iv); resolve(window.__blobUpload); }
+        else if(window.__blobUploadError){ clearInterval(iv); reject(new Error('blob_client_load_failed')); }
+        else if(tries > 100){ clearInterval(iv); reject(new Error('blob_client_timeout')); }
+      }, 100);
+    });
+  }
+
   /* ---------- modal wiring ---------- */
   function openModal(challengeId){
     currentChallengeId = challengeId;
-    currentPhotoDataUrl = null;
+    currentMedia = null;
     reopenModal();
   }
 
@@ -570,7 +661,7 @@
   function closeModal(){
     document.getElementById('modal-overlay').hidden = true;
     currentChallengeId = null;
-    currentPhotoDataUrl = null;
+    currentMedia = null;
   }
 
   function openIntro(prefill){
@@ -597,43 +688,72 @@
 
   function renderModalBody(){
     var mb = document.getElementById('modal-body');
-    if(!currentPhotoDataUrl){
+    if(!currentMedia){
       mb.innerHTML =
-        '<label for="photo-input">Sua foto</label>' +
+        '<label for="photo-input">Sua foto ou vídeo</label>' +
         '<label class="file-pick" for="photo-input">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:26px;height:26px;flex:none;"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7H8l1-1.5h6L16 7h2.5A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9Z"/><circle cx="12" cy="13" r="3.2"/></svg>' +
-        '<span>Toque para tirar ou escolher uma foto</span>' +
-        '<input class="visually-hidden" type="file" id="photo-input" accept="image/*" capture="environment">' +
+        '<span>Toque para tirar uma foto ou gravar um vídeo (até 30s)</span>' +
+        '<input class="visually-hidden" type="file" id="photo-input" accept="image/*,video/*" capture="environment">' +
         '</label>';
       var input = document.getElementById('photo-input');
       input.addEventListener('change', function(e){
         var f = e.target.files && e.target.files[0];
         if(!f) return;
         var statusEl = document.getElementById('modal-status');
-        statusEl.textContent = 'Preparando a foto...';
-        statusEl.className = 'status-line';
-        compressFile(f).then(function(dataUrl){
-          currentPhotoDataUrl = dataUrl;
-          statusEl.textContent = '';
-          renderModalBody();
-        }).catch(function(){
-          statusEl.textContent = 'Não consegui ler essa foto, tenta outra.';
-          statusEl.className = 'status-line err';
-        });
+        var isVideo = f.type.indexOf('video/') === 0;
+        if(isVideo){
+          if(f.size > MAX_VIDEO_BYTES){
+            statusEl.textContent = 'Esse vídeo é grande demais (máx. ' + Math.round(MAX_VIDEO_BYTES/1024/1024) + 'MB). Tenta um vídeo mais curto.';
+            statusEl.className = 'status-line err';
+            return;
+          }
+          statusEl.textContent = 'Conferindo o vídeo...';
+          statusEl.className = 'status-line';
+          prepareVideo(f).then(function(info){
+            currentMedia = {type: 'video', file: f, previewUrl: info.previewUrl, ext: guessVideoExt(f.type)};
+            statusEl.textContent = '';
+            renderModalBody();
+          }).catch(function(err){
+            if(err && err.code === 'video_longo_demais'){
+              statusEl.textContent = 'Esse vídeo passa de 30 segundos. Grava um pedacinho mais curto e tenta de novo!';
+            } else {
+              statusEl.textContent = 'Não consegui ler esse vídeo, tenta outro.';
+            }
+            statusEl.className = 'status-line err';
+          });
+        } else {
+          statusEl.textContent = 'Preparando a foto...';
+          statusEl.className = 'status-line';
+          compressFile(f).then(function(dataUrl){
+            currentMedia = {type: 'image', dataUrl: dataUrl};
+            statusEl.textContent = '';
+            renderModalBody();
+          }).catch(function(){
+            statusEl.textContent = 'Não consegui ler essa foto, tenta outra.';
+            statusEl.className = 'status-line err';
+          });
+        }
       });
     } else {
       var whoLabel = guestName ? escapeHtml(guestName) : 'Convidado(a) (sem nome)';
+      var mediaHtml = currentMedia.type === 'video'
+        ? '<video src="' + currentMedia.previewUrl + '" controls playsinline muted></video>'
+        : '<img src="' + currentMedia.dataUrl + '" alt="pré-visualização">';
       mb.innerHTML =
-        '<div class="preview-wrap"><img src="' + currentPhotoDataUrl + '" alt="pré-visualização"><button type="button" class="retake" id="btn-retake">Trocar foto</button></div>' +
+        '<div class="preview-wrap">' + mediaHtml + '<button type="button" class="retake" id="btn-retake">Trocar</button></div>' +
         '<div class="guest-line">Vai aparecer como <b>' + whoLabel + '</b> · <button type="button" class="link-btn" id="btn-modal-change-name">trocar</button></div>' +
         '<div class="actions">' +
         '<button type="button" class="btn-primary" id="btn-submit">Enviar pro mural</button>' +
         '</div>' +
         '<div class="share-fallback"><button type="button" class="btn-secondary" id="btn-share-alt" style="width:100%">Ou compartilhar por fora</button></div>';
       document.getElementById('btn-retake').addEventListener('click', function(){
-        currentPhotoDataUrl = null; renderModalBody();
+        if(currentMedia && currentMedia.type === 'video' && currentMedia.previewUrl){
+          try{ URL.revokeObjectURL(currentMedia.previewUrl); }catch(e){}
+        }
+        currentMedia = null; renderModalBody();
       });
-      document.getElementById('btn-submit').addEventListener('click', onSubmitPhoto);
+      document.getElementById('btn-submit').addEventListener('click', onSubmitMedia);
       document.getElementById('btn-share-alt').addEventListener('click', onShareExternal);
       document.getElementById('btn-modal-change-name').addEventListener('click', function(){
         introReturnTo = 'challenge';
@@ -652,9 +772,14 @@
   }
 
   function onShareExternal(){
-    if(!currentPhotoDataUrl) return;
-    var blob = dataUrlToBlob(currentPhotoDataUrl);
-    var file = new File([blob], 'desafio.jpg', {type:'image/jpeg'});
+    if(!currentMedia) return;
+    var file;
+    if(currentMedia.type === 'video'){
+      file = currentMedia.file;
+    } else {
+      var blob = dataUrlToBlob(currentMedia.dataUrl);
+      file = new File([blob], 'desafio.jpg', {type:'image/jpeg'});
+    }
     if(navigator.canShare && navigator.canShare({files:[file]})){
       navigator.share({files:[file], title:'Desafio do casamento', text: CHALLENGES[currentChallengeId].text}).catch(function(){});
     } else {
@@ -664,46 +789,81 @@
     }
   }
 
-  function onSubmitPhoto(){
-    if(!currentPhotoDataUrl) return;
+  function onSubmitMedia(){
+    if(!currentMedia) return;
     var statusEl = document.getElementById('modal-status');
     var btn = document.getElementById('btn-submit');
     btn.disabled = true;
     statusEl.textContent = 'Enviando...';
     statusEl.className = 'status-line';
     var name = guestName;
-    var photoDataUrl = currentPhotoDataUrl;
     var challengeId = currentChallengeId;
+    var media = currentMedia;
 
-    fetch('/api/upload', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({challengeId: challengeId, name: name, photo: photoDataUrl})
-    }).then(function(r){ return r.json().then(function(data){ return {ok: r.ok, data: data}; }); })
-      .then(function(res){
-        if(!res.ok || !res.data || !res.data.ok){
-          throw new Error((res.data && res.data.error) || 'erro');
-        }
-        state.submissions.unshift({
-          id: res.data.id,
-          challengeId: res.data.challengeId,
-          name: res.data.name,
-          ts: res.data.ts,
-          localPreviewUrl: photoDataUrl,
-          url: res.data.url
+    function onOk(entry){
+      state.submissions.unshift(entry);
+      render();
+      var statusEl2 = document.getElementById('modal-status');
+      if(statusEl2){
+        statusEl2.textContent = 'Enviado! Já deve aparecer no mural.';
+        statusEl2.className = 'status-line ok';
+      }
+      setTimeout(closeModal, 900);
+    }
+    function onFail(msg){
+      statusEl.textContent = msg || 'Não deu pra enviar agora. Confere sua internet e tenta de novo.';
+      statusEl.className = 'status-line err';
+      btn.disabled = false;
+    }
+
+    if(media.type === 'image'){
+      fetch('/api/upload', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({challengeId: challengeId, name: name, photo: media.dataUrl})
+      }).then(function(r){ return r.json().then(function(data){ return {ok: r.ok, data: data}; }); })
+        .then(function(res){
+          if(!res.ok || !res.data || !res.data.ok){
+            throw new Error((res.data && res.data.error) || 'erro');
+          }
+          onOk({
+            id: res.data.id,
+            challengeId: res.data.challengeId,
+            name: res.data.name,
+            ts: res.data.ts,
+            type: 'image',
+            localPreviewUrl: media.dataUrl,
+            url: res.data.url
+          });
+        }).catch(function(){ onFail(); });
+    } else {
+      statusEl.textContent = 'Enviando vídeo... isso pode levar um instante.';
+      getBlobUpload().then(function(upload){
+        var built = buildVideoPathname(challengeId, name, media.ext);
+        return upload(built.pathname, media.file, {
+          access: 'public',
+          handleUploadUrl: '/api/upload-video',
+          contentType: media.file.type || ('video/' + media.ext)
+        }).then(function(blob){
+          onOk({
+            id: blob.pathname,
+            challengeId: challengeId,
+            name: built.cleanName,
+            ts: built.ts,
+            type: 'video',
+            localPreviewUrl: media.previewUrl,
+            url: blob.url
+          });
         });
-        render();
-        var statusEl2 = document.getElementById('modal-status');
-        if(statusEl2){
-          statusEl2.textContent = 'Enviado! Já deve aparecer no mural.';
-          statusEl2.className = 'status-line ok';
+      }).catch(function(err){
+        var code = err && (err.message || err.code);
+        if(code === 'blob_client_timeout' || code === 'blob_client_load_failed'){
+          onFail('Não consegui carregar o suporte a vídeo. Confere sua internet e tenta de novo.');
+        } else {
+          onFail('Não deu pra enviar o vídeo agora. Confere sua internet e tenta de novo.');
         }
-        setTimeout(closeModal, 900);
-      }).catch(function(){
-        statusEl.textContent = 'Não deu pra enviar agora. Confere sua internet e tenta de novo.';
-        statusEl.className = 'status-line err';
-        btn.disabled = false;
       });
+    }
   }
 
   /* ---------- wiring ---------- */

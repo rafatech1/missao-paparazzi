@@ -5,8 +5,10 @@
 const { list } = require('@vercel/blob');
 
 // Formato: wg__<timestamp>__ch<challengeId>__<nomeCodificado>__<idAleatorio>.<ext>
+const VIDEO_EXTS = ['mp4', 'mov', 'webm', 'm4v', '3gp'];
+
 function parsePathname(name) {
-  const m = /^wg__(\d+)__ch(\d+)__(.+)__([a-z0-9]+)\.(jpg|jpeg|png)$/i.exec(name);
+  const m = /^wg__(\d+)__ch(\d+)__(.+)__([a-z0-9]+)\.(jpg|jpeg|png|mp4|mov|webm|m4v|3gp)$/i.exec(name);
   if (!m) return null;
   let decodedName = '';
   try {
@@ -14,10 +16,12 @@ function parsePathname(name) {
   } catch (e) {
     decodedName = m[3];
   }
+  const ext = m[5].toLowerCase();
   return {
     ts: parseInt(m[1], 10),
     challengeId: parseInt(m[2], 10),
     name: decodedName,
+    type: VIDEO_EXTS.indexOf(ext) !== -1 ? 'video' : 'image',
   };
 }
 
@@ -39,6 +43,7 @@ module.exports = async (req, res) => {
         challengeId: meta.challengeId,
         name: meta.name,
         ts: meta.ts,
+        type: meta.type,
         url: blob.url,
         fullUrl: blob.url,
       });
