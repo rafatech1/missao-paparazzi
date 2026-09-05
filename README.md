@@ -1,4 +1,4 @@
-# Caça-Cliques do Casamento — Iana & Wllysses
+# Missão Paparazzi — Iana & Wllysses
 
 Jogo de desafios fotográficos para o casamento. Os convidados escaneiam o QR code, escolhem um desafio, tiram uma foto e ela entra direto no mural.
 
@@ -11,9 +11,20 @@ Stack: frontend estático (`public/`) + funções serverless (`api/`) rodando no
 - `api/photos.js` — lista as fotos salvas e devolve pro front já no formato que a página espera.
 - Cada foto vira um arquivo com um nome tipo `wg__1735599999999__ch3__Rafa__ab12cd.jpg` — dá pra ler ali o timestamp, o número do desafio e o nome de quem mandou, então não precisa de banco de dados separado.
 
+## 0. Renomear o projeto na Vercel (de caca-click-casamento pra missao-paparazzi)
+
+1. No painel da Vercel, abre o projeto → **Settings** → **General**.
+2. No campo **Project Name**, troca `caca-click-casamento` por `missao-paparazzi` (minúsculo, sem acento, hífen no lugar de espaço) → **Save**.
+3. Vai em **Settings** → **Domains** e confere qual ficou o domínio novo (normalmente `missao-paparazzi.vercel.app`, mas pode vir com um sufixo dependendo da sua conta) — copia essa URL certinha.
+4. Me manda essa URL final aqui que eu regenero o QR code e o convite impresso apontando pra ela.
+
+**Atenção:** a URL antiga (`caca-click-casamento.vercel.app`) para de funcionar depois do rename e não redireciona — ela pode inclusive ser reaproveitada por outro projeto de outra pessoa no futuro. Se algum convite já foi impresso ou enviado com o QR antigo, ele vai parar de funcionar assim que você renomear. O código do site (`public/index.html`, `api/`) não referencia a URL em lugar nenhum, então o rename não quebra nada da aplicação — só o QR/convite precisa ser regerado.
+
+O nome do repositório no GitHub é independente do nome do projeto na Vercel — você pode deixar `caca-click-casamento-main` como está no GitHub sem afetar nada, ou renomear os dois pra manter consistência (isso é só estético).
+
 ## 1. Ativar o Vercel Blob no seu projeto
 
-1. No painel da Vercel, abre o projeto `caca-click-casamento`.
+1. No painel da Vercel, abre o seu projeto.
 2. Vai na aba **Storage**.
 3. Clica em **Create Database** → escolhe **Blob**.
 4. Dá um nome (pode deixar o padrão) e confirma.
@@ -25,7 +36,7 @@ Só isso. A Vercel já conecta o Blob ao projeto e cria sozinha a variável de a
 ```bash
 git init
 git add .
-git commit -m "Caça-cliques do casamento"
+git commit -m "Missão Paparazzi"
 git branch -M main
 git remote add origin <url-do-seu-repo>
 git push -u origin main

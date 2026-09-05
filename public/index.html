@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Caça-Cliques do Casamento — Iana & Wllysses</title>
+<title>Missão Paparazzi — Iana & Wllysses</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" type="image/png" href="favicon-32.png" sizes="32x32">
@@ -336,7 +336,7 @@
         '<img src="assets/flower_cream.webp" style="width:46%;top:30%;left:38%;transform:rotate(12deg);z-index:2;">' +
       '</div>' +
       '<div class="wrap">' +
-      '<span class="eyebrow">Caça-cliques do casamento</span>' +
+      '<span class="eyebrow">Missão Paparazzi</span>' +
       '<img class="names-img" src="assets/names.webp" alt="' + escapeHtml(meta.names||'') + '">' +
       '<div class="date">' + escapeHtml(meta.date||'') + (meta.venue ? ' · ' + escapeHtml(meta.venue) : '') + '</div>' +
       '<p class="lede">Escolha um desafio abaixo, tire a foto e mande pro <b>mural</b>. ' +
@@ -419,7 +419,7 @@
     var top = Object.keys(counts).map(function(k){ return {name:k, n:counts[k]}; })
       .sort(function(a,b){ return b.n - a.n; }).slice(0,3);
     if(top.length === 0) return '';
-    return '<div class="leaderboard">Top da caçada: ' +
+    return '<div class="leaderboard">Top paparazzi: ' +
       top.map(function(t,i){ return (i+1)+'º '+escapeHtml(t.name)+' ('+t.n+')'; }).join(' · ') +
     '</div>';
   }

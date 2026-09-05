@@ -2,7 +2,7 @@
   "name": "caca-cliques-casamento",
   "version": "1.0.0",
   "private": true,
-  "description": "Jogo de desafios fotograficos do casamento - fotos guardadas no Vercel Blob, hospedado no Vercel",
+  "description": "Missao Paparazzi - jogo de desafios fotograficos do casamento - fotos guardadas no Vercel Blob, hospedado no Vercel",
   "scripts": {
     "dev": "vercel dev"
   },
