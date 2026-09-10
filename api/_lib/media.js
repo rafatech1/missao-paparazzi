@@ -15,6 +15,15 @@ const CHALLENGE_COUNT = 31;
 // suficiente pra manter os desafios equilibrados num casamento.
 const MAX_PER_CHALLENGE = 3;
 
+// Depois desse instante (fim do dia 13/09/2026 no horário de Brasília), o
+// site vira a retrospectiva e para de aceitar fotos/vídeos novos. Precisa
+// bater com RETRO_CUTOFF_MS em public/index.html.
+const SUBMISSIONS_CUTOFF_MS = new Date('2026-09-14T00:00:00-03:00').getTime();
+
+function submissionsClosed() {
+  return Date.now() >= SUBMISSIONS_CUTOFF_MS;
+}
+
 function parsePathnameChallengeId(pathname) {
   const m = /^wg__\d+__ch(\d+)__/.exec(pathname);
   return m ? parseInt(m[1], 10) : null;
@@ -29,4 +38,11 @@ async function countForChallenge(chId) {
   return n;
 }
 
-module.exports = { CHALLENGE_COUNT, MAX_PER_CHALLENGE, parsePathnameChallengeId, countForChallenge };
+module.exports = {
+  CHALLENGE_COUNT,
+  MAX_PER_CHALLENGE,
+  SUBMISSIONS_CUTOFF_MS,
+  submissionsClosed,
+  parsePathnameChallengeId,
+  countForChallenge,
+};

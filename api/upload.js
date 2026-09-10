@@ -5,7 +5,7 @@
 // conectado (Storage → Create Database → Blob no painel da Vercel).
 
 const { put } = require('@vercel/blob');
-const { CHALLENGE_COUNT, MAX_PER_CHALLENGE, countForChallenge } = require('./_lib/media');
+const { CHALLENGE_COUNT, MAX_PER_CHALLENGE, submissionsClosed, countForChallenge } = require('./_lib/media');
 
 function sanitizeName(name) {
   return String(name || '')
@@ -28,6 +28,11 @@ module.exports = async (req, res) => {
   }
 
   try {
+    if (submissionsClosed()) {
+      res.status(403).json({ error: 'evento_encerrado' });
+      return;
+    }
+
     const body = req.body || {};
     const { challengeId, name, photo } = body;
 

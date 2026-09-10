@@ -10,12 +10,16 @@ Stack: frontend estático (`public/`) + funções serverless (`api/`) rodando no
 - `api/upload.js` — recebe a foto (em base64) e salva no Vercel Blob.
 - `api/upload-video.js` — autoriza o upload de vídeo. Diferente da foto, o vídeo vai **direto do navegador do convidado pro Blob Storage**, sem passar pelo corpo desta função — isso é necessário porque a Vercel tem um limite fixo de 4.5MB no corpo de qualquer função serverless (mesmo no plano pago), o que inviabilizaria mandar vídeo do jeito que a foto é mandada.
 - `api/photos.js` — lista as fotos e vídeos salvos e devolve pro front já no formato que a página espera.
-- `api/_lib/media.js` — código compartilhado entre `upload.js` e `upload-video.js` pra contar quantos envios cada desafio já tem.
+- `api/_lib/media.js` — código compartilhado entre `upload.js` e `upload-video.js` pra contar quantos envios cada desafio já tem e pra saber se o evento já encerrou.
 - Cada foto ou vídeo vira um arquivo com um nome tipo `wg__1735599999999__ch3__Rafa__ab12cd.jpg` (ou `.mp4`, `.mov`, `.webm`...) — dá pra ler ali o timestamp, o número do desafio e o nome de quem mandou, então não precisa de banco de dados separado.
 
 ### Vídeos
 
 Os convidados também podem mandar vídeos de até **15 segundos** (o site bloqueia na hora, antes de enviar, se passar disso) e até 150MB. Não tem compressão de vídeo no navegador (ao contrário da foto, que é comprimida antes de enviar), então um vídeo consome mais armazenamento do Blob — vale de olho no uso lá no painel da Vercel se o casamento tiver muita gente mandando vídeo.
+
+### Retrospectiva pós-evento
+
+A partir da meia-noite de 14/09/2026 (fim do dia 13/09 no horário de Brasília), o site inteiro para de mostrar os desafios e passa a mostrar uma retrospectiva em tela cheia: todas as fotos e vídeos enviados, passando sozinhos em ordem cronológica, com o nome de quem mandou e o desafio de cada um. Quem abrir o link ou o QR code depois desse horário cai direto nela — não dá mais pra enviar foto/vídeo novo (isso é bloqueado tanto na tela quanto no servidor). Pra mudar esse horário, é só trocar `RETRO_CUTOFF_MS` em `public/index.html` e `SUBMISSIONS_CUTOFF_MS` em `api/_lib/media.js` (os dois têm que ficar iguais).
 
 ## 0. Renomear o projeto na Vercel (de caca-click-casamento pra missao-paparazzi)
 
