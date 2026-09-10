@@ -325,7 +325,7 @@
     {cat:1, text:"Uma selfie com quem você acabou de conhecer na festa"},
     {cat:1, text:"Você imitando o passo de dança de outro convidado"},
     {cat:1, text:"A cara de quem está adorando o buffet"},
-    {cat:1, text:"Recriando uma pose clássica de casamento, só que exagerada"},
+    {cat:1, text:"Uma foto aleatória de qualquer coisa que estiver rolando agora"},
     {cat:1, text:"Uma foto de alguém que vai amanhecer de ressaca"},
     {cat:1, text:"Rei e rainha da pista de dança"},
     {cat:2, text:"Uma lágrima de emoção de algum convidado"},
@@ -336,8 +336,8 @@
     {cat:2, text:"Todas as madrinhas juntas numa foto"},
     {cat:2, text:"Todos os padrinhos juntos numa foto"},
     {cat:2, text:"Uma foto ao lado dos noivos"},
-    {cat:3, text:"Uma foto em grupo gritando \"Vivam os noivos!\""},
-    {cat:3, text:"O melhor movimento da pista de dança até agora"},
+    {cat:3, text:"Uma foto ou vídeo em grupo gritando \"Vivam os noivos!\""},
+    {cat:3, text:"O melhor movimento da pista de dança"},
     {cat:3, text:"Um acessório emprestado virando parte do seu look"},
     {cat:3, text:"Uma pose de capa de revista com os padrinhos/madrinhas"},
     {cat:3, text:"Uma foto tentando roubar a cena dos noivos (com carinho)"},
@@ -357,6 +357,10 @@
   var MAX_VIDEO_SECONDS = 15;
   var MAX_VIDEO_BYTES = 150 * 1024 * 1024;
   var MAX_PER_CHALLENGE = 3; // depois disso o desafio fica "completo"
+  // Índices (em CHALLENGES) de desafios sem limite de envio. "Registre sua
+  // presença" fica de fora do limite de 3 de propósito, pra todo mundo poder
+  // marcar presença. Precisa bater com UNLIMITED_CHALLENGES em api/_lib/media.js.
+  var UNLIMITED_CHALLENGES = [4];
 
   var CHALLENGES_PAGE_SIZE = 5;
 
@@ -405,6 +409,7 @@
   }
 
   function isChallengeFull(challengeId){
+    if(UNLIMITED_CHALLENGES.indexOf(challengeId) !== -1) return false;
     return countFor(challengeId) >= MAX_PER_CHALLENGE;
   }
 
@@ -464,7 +469,7 @@
 
     var html = '<section class="section"><div class="wrap">' +
       '<div class="section-head">' + renderGuestChip() + '<h2>Os desafios</h2>' +
-      '<p>Cada desafio aceita até ' + MAX_PER_CHALLENGE + ' fotos ou vídeos. Depois disso ele fica completo e é hora de topar outro!</p></div>' +
+      '<p>Cada desafio aceita até ' + MAX_PER_CHALLENGE + ' fotos ou vídeos (menos "Registre sua presença", que é sem limite). Depois disso ele fica completo e é hora de topar outro!</p></div>' +
       '<div class="cat-tabs" id="cat-tabs">' +
         CATEGORIES.map(function(c,ci){ return '<button type="button" class="cat-tab' + (activeCat===String(ci)?' is-active':'') + '" data-cat="'+ci+'">'+escapeHtml(c)+'</button>'; }).join('') +
         '<button type="button" class="cat-tab' + (activeCat==='all'?' is-active':'') + '" data-cat="all">Todos</button>' +
@@ -474,10 +479,13 @@
       var i = pageIndexes[k];
       var ch = CHALLENGES[i];
       var n = countFor(i);
-      var full = n >= MAX_PER_CHALLENGE;
-      var countText = full
-        ? (MAX_PER_CHALLENGE + '/' + MAX_PER_CHALLENGE + ' · completo')
-        : (n + '/' + MAX_PER_CHALLENGE + (n===1?' foto enviada':' fotos enviadas'));
+      var unlimited = UNLIMITED_CHALLENGES.indexOf(i) !== -1;
+      var full = !unlimited && n >= MAX_PER_CHALLENGE;
+      var countText = unlimited
+        ? (n + (n===1?' foto enviada':' fotos enviadas'))
+        : full
+          ? (MAX_PER_CHALLENGE + '/' + MAX_PER_CHALLENGE + ' · completo')
+          : (n + '/' + MAX_PER_CHALLENGE + (n===1?' foto enviada':' fotos enviadas'));
       html += '<div class="ticket' + (full?' is-full':'') + '" data-cat="' + ch.cat + '">' +
         '<span class="num">' + String(i+1).padStart(2,'0') + '</span>' +
         '<div class="cat-label">' + escapeHtml(CATEGORIES[ch.cat]) + '</div>' +

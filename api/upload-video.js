@@ -10,7 +10,7 @@
 //     codificados no nome do arquivo — igual às fotos).
 
 const { handleUpload } = require('@vercel/blob/client');
-const { CHALLENGE_COUNT, MAX_PER_CHALLENGE, submissionsClosed, countForChallenge } = require('./_lib/media');
+const { CHALLENGE_COUNT, MAX_PER_CHALLENGE, UNLIMITED_CHALLENGES, submissionsClosed, countForChallenge } = require('./_lib/media');
 
 // ~150MB dá folga confortável pra um vídeo de até 15s gravado num celular
 // (mesmo em 4K), sem deixar o armazenamento gratuito estourar rápido.
@@ -60,9 +60,11 @@ module.exports = async (req, res) => {
         if (isNaN(chId) || chId < 0 || chId >= CHALLENGE_COUNT) {
           throw new Error('desafio_invalido');
         }
-        const jaEnviados = await countForChallenge(chId);
-        if (jaEnviados >= MAX_PER_CHALLENGE) {
-          throw new Error('desafio_completo');
+        if (UNLIMITED_CHALLENGES.indexOf(chId) === -1) {
+          const jaEnviados = await countForChallenge(chId);
+          if (jaEnviados >= MAX_PER_CHALLENGE) {
+            throw new Error('desafio_completo');
+          }
         }
         return {
           allowedContentTypes: ALLOWED_VIDEO_TYPES,

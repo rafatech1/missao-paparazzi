@@ -15,6 +15,11 @@ const CHALLENGE_COUNT = 31;
 // suficiente pra manter os desafios equilibrados num casamento.
 const MAX_PER_CHALLENGE = 3;
 
+// Índices de desafios sem limite de envio. "Registre sua presença" (índice 4)
+// fica de fora do limite de 3 de propósito, pra todo mundo poder marcar
+// presença. Precisa bater com UNLIMITED_CHALLENGES em public/index.html.
+const UNLIMITED_CHALLENGES = [4];
+
 // Depois desse instante (fim do dia 13/09/2026 no horário de Brasília), o
 // site vira a retrospectiva e para de aceitar fotos/vídeos novos. Precisa
 // bater com RETRO_CUTOFF_MS em public/index.html.
@@ -41,6 +46,7 @@ async function countForChallenge(chId) {
 module.exports = {
   CHALLENGE_COUNT,
   MAX_PER_CHALLENGE,
+  UNLIMITED_CHALLENGES,
   SUBMISSIONS_CUTOFF_MS,
   submissionsClosed,
   parsePathnameChallengeId,

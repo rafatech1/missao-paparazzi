@@ -5,7 +5,7 @@
 // conectado (Storage → Create Database → Blob no painel da Vercel).
 
 const { put } = require('@vercel/blob');
-const { CHALLENGE_COUNT, MAX_PER_CHALLENGE, submissionsClosed, countForChallenge } = require('./_lib/media');
+const { CHALLENGE_COUNT, MAX_PER_CHALLENGE, UNLIMITED_CHALLENGES, submissionsClosed, countForChallenge } = require('./_lib/media');
 
 function sanitizeName(name) {
   return String(name || '')
@@ -47,10 +47,12 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const jaEnviados = await countForChallenge(chId);
-    if (jaEnviados >= MAX_PER_CHALLENGE) {
-      res.status(409).json({ error: 'desafio_completo' });
-      return;
+    if (UNLIMITED_CHALLENGES.indexOf(chId) === -1) {
+      const jaEnviados = await countForChallenge(chId);
+      if (jaEnviados >= MAX_PER_CHALLENGE) {
+        res.status(409).json({ error: 'desafio_completo' });
+        return;
+      }
     }
 
     const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(photo);
