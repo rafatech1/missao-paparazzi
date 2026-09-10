@@ -6,7 +6,7 @@
 const { list } = require('@vercel/blob');
 
 // Precisa bater com CHALLENGES.length em public/index.html.
-const CHALLENGE_COUNT = 31;
+const CHALLENGE_COUNT = 30;
 
 // Depois de atingir esse número, o desafio fica "completo" e para de aceitar
 // novos envios. Atenção: como não tem banco de dados nem lock, dois envios
