@@ -13,7 +13,7 @@ const CHALLENGE_COUNT = 31;
 // simultâneos pro mesmo desafio no exato mesmo instante podem, em raríssimos
 // casos, passar os dois — não é um limite 100% à prova de corrida, só o
 // suficiente pra manter os desafios equilibrados num casamento.
-const MAX_PER_CHALLENGE = 3;
+const MAX_PER_CHALLENGE = 5;
 
 // Índices de desafios sem limite de envio. "Registre sua presença" (índice 4)
 // fica de fora do limite de 3 de propósito, pra todo mundo poder marcar

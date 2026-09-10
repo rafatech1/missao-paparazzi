@@ -356,13 +356,13 @@
   var GUEST_INTRO_KEY = 'wg_intro_done';
   var MAX_VIDEO_SECONDS = 15;
   var MAX_VIDEO_BYTES = 150 * 1024 * 1024;
-  var MAX_PER_CHALLENGE = 3; // depois disso o desafio fica "completo"
+  var MAX_PER_CHALLENGE = 5; // depois disso o desafio fica "completo"
   // Índices (em CHALLENGES) de desafios sem limite de envio. "Registre sua
   // presença" fica de fora do limite de 3 de propósito, pra todo mundo poder
   // marcar presença. Precisa bater com UNLIMITED_CHALLENGES em api/_lib/media.js.
   var UNLIMITED_CHALLENGES = [4];
 
-  var CHALLENGES_PAGE_SIZE = 5;
+  var CHALLENGES_PAGE_SIZE = 6;
 
   // Depois desse instante (fim do dia 13/09/2026 no horário de Brasília), o
   // site inteiro vira a retrospectiva — não dá mais pra ver os desafios nem
