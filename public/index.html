@@ -60,17 +60,17 @@
   .hero-frame{
     position:absolute;inset:14px;border:1px solid rgba(184,144,31,.4);border-radius:3px;pointer-events:none;
   }
-  .hero-corner{position:absolute;width:44vw;max-width:230px;height:44vw;max-height:230px;pointer-events:none;z-index:0;opacity:.85;}
-  .hero-corner img{position:absolute;filter:drop-shadow(0 4px 8px rgba(30,58,120,.12));}
-  .hero-corner.tl{top:-12vw;left:-15vw;}
-  .hero-corner.tr{top:-12vw;right:-15vw;transform:scaleX(-1);}
+  .hero-corner{position:absolute;width:48vw;max-width:250px;height:48vw;max-height:250px;pointer-events:none;z-index:0;}
+  .hero-corner img{position:absolute;filter:saturate(1.15) drop-shadow(0 6px 12px rgba(30,58,120,.22));}
+  .hero-corner.tl{top:-6vw;left:-8vw;}
+  .hero-corner.tr{top:-6vw;right:-8vw;transform:scaleX(-1);}
   .hero .eyebrow{
     position:relative;z-index:1;font-size:.74rem;letter-spacing:.22em;text-transform:uppercase;
     color:var(--gold-text);margin-bottom:22px;display:block;font-weight:700;
   }
   .hero .names-img{
-    position:relative;z-index:1;width:min(420px,72vw);margin:0 auto;
-    filter:saturate(1.2) contrast(1.1) drop-shadow(0 2px 3px rgba(120,90,20,.22));
+    position:relative;z-index:1;width:min(460px,80vw);margin:0 auto;
+    filter:saturate(1.1) contrast(1.05) drop-shadow(0 3px 5px rgba(30,58,120,.18));
   }
   .hero .date{
     position:relative;z-index:1;margin-top:18px;font-size:1rem;color:var(--navy-deep);
@@ -418,11 +418,13 @@
       '<div class="hero-frame"></div>' +
       '<div class="hero-corner tl">' +
         '<img src="assets/flower_navy.webp" style="width:62%;top:-6%;left:-6%;transform:rotate(-8deg);z-index:3;">' +
-        '<img src="assets/flower_lavender.webp" style="width:48%;top:32%;left:34%;transform:rotate(10deg);z-index:2;">' +
+        '<img src="assets/flower_white.webp" style="width:34%;top:2%;left:48%;transform:rotate(6deg);z-index:2;">' +
+        '<img src="assets/flower_lavender.webp" style="width:48%;top:32%;left:34%;transform:rotate(10deg);z-index:4;">' +
       '</div>' +
       '<div class="hero-corner tr">' +
         '<img src="assets/flower_blue.webp" style="width:64%;top:-6%;left:-6%;transform:rotate(-8deg);z-index:3;">' +
-        '<img src="assets/flower_cream.webp" style="width:46%;top:30%;left:38%;transform:rotate(12deg);z-index:2;">' +
+        '<img src="assets/flower_paleblue.webp" style="width:32%;top:0%;left:46%;transform:rotate(-6deg);z-index:2;">' +
+        '<img src="assets/flower_cream.webp" style="width:46%;top:30%;left:38%;transform:rotate(12deg);z-index:4;">' +
       '</div>' +
       '<div class="wrap">' +
       '<span class="eyebrow">Missão Paparazzi</span>' +
