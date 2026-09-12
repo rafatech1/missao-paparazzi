@@ -964,11 +964,25 @@
             url: res.data.url
           });
         }).catch(function(err){
-          if(err && err.code === 'desafio_completo'){
+          var code = err && err.code;
+          if(code === 'desafio_completo'){
             fetchPhotos();
             onFail('Esse desafio já bateu o limite de ' + MAX_PER_CHALLENGE + ' fotos/vídeos, escolhe outro desafio!');
+          } else if(code === 'evento_encerrado'){
+            onFail('O envio de fotos e vídeos já encerrou.');
+          } else if(code === 'foto_grande_demais'){
+            onFail('Essa foto ficou grande demais pra enviar. Tenta tirar outra ou escolher uma foto menor.');
+          } else if(code === 'foto_invalida'){
+            onFail('Não consegui reconhecer essa foto. Tenta outra.');
+          } else if(code){
+            // Mostra o código do erro na tela pra dar pra identificar o problema
+            // real mesmo sem acesso aos logs do servidor (ex: erro_interno pode
+            // ser o armazenamento do Blob cheio ou fora do ar).
+            onFail('Não deu pra enviar agora (erro: ' + code + '). Confere sua internet e tenta de novo.');
           } else {
-            onFail();
+            // Sem código de erro = a requisição nem chegou a completar (sem
+            // internet, sem sinal, ou o servidor não respondeu a tempo).
+            onFail('Não deu pra enviar agora (sem conexão com o servidor). Confere sua internet e tenta de novo.');
           }
         });
     } else {
