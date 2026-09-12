@@ -952,6 +952,7 @@
           if(!res.ok || !res.data || !res.data.ok){
             var err = new Error((res.data && res.data.error) || 'erro');
             err.code = res.data && res.data.error;
+            err.detail = res.data && res.data.message;
             throw err;
           }
           onOk({
@@ -975,10 +976,12 @@
           } else if(code === 'foto_invalida'){
             onFail('Não consegui reconhecer essa foto. Tenta outra.');
           } else if(code){
-            // Mostra o código do erro na tela pra dar pra identificar o problema
-            // real mesmo sem acesso aos logs do servidor (ex: erro_interno pode
-            // ser o armazenamento do Blob cheio ou fora do ar).
-            onFail('Não deu pra enviar agora (erro: ' + code + '). Confere sua internet e tenta de novo.');
+            // Mostra o código do erro (e o detalhe técnico, se veio) na tela pra
+            // dar pra identificar o problema real mesmo sem acesso aos logs do
+            // servidor (ex: erro_interno pode ser o armazenamento do Blob cheio
+            // ou fora do ar).
+            var detail = err && err.detail;
+            onFail('Não deu pra enviar agora (erro: ' + code + (detail ? ' — ' + detail : '') + '). Confere sua internet e tenta de novo.');
           } else {
             // Sem código de erro = a requisição nem chegou a completar (sem
             // internet, sem sinal, ou o servidor não respondeu a tempo).
